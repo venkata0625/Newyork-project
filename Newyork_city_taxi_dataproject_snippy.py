@@ -4,36 +4,21 @@ import io
 import snappy
 
 def download_and_decompress_files_from_s3(region, bucket_name, folder_name, local_directory):
-    # Create an S3 client
     s3_client = boto3.client('s3', region_name=region)
-
-    # Check if the local directory exists, if not, create it
     if not os.path.exists(local_directory):
         os.makedirs(local_directory)
-
-    # List objects within the specified folder
     objects = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder_name)
-
     if 'Contents' in objects:
         for obj in objects['Contents']:
             key = obj['Key']
-            if not key.endswith('/'):  # Ignore directories
-                # Get the object from S3
+            if not key.endswith('/'): 
                 s3_object = s3_client.get_object(Bucket=bucket_name, Key=key)
                 s3_data = s3_object['Body'].read()
-
-                # Create a BytesIO object from the S3 data
                 snappyfile = io.BytesIO(s3_data)
-
-                # Create another BytesIO object for decompressed data
                 decompressed_data = io.BytesIO()
                 snappy.stream_decompress(src=snappyfile, dst=decompressed_data)
-                decompressed_data.seek(0)  # Reset the pointer of decompressed_data
-
-                # Construct the local file path
-                local_file_path = os.path.join(local_directory, key.split('/')[-1].replace('.snz', ''))  # Assuming .snz extension for snappy files
-
-                # Write the decompressed data to a file
+                decompressed_data.seek(0)  
+                local_file_path = os.path.join(local_directory, key.split('/')[-1].replace('.snz', ''))  
                 with open(local_file_path, 'wb') as f:
                     f.write(decompressed_data.read())
                 print(f"Downloaded and decompressed {key} to {local_file_path}")
